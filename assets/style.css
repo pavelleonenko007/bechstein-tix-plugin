@@ -1,0 +1,40 @@
+.bechtix-text-field {
+  width: 100%;
+}
+
+.bechtix-row {
+  display: flex;
+  margin-bottom: 1em;
+}
+
+.bechtix-row__container {
+  flex: 1;
+}
+
+.bechtix-field input {
+  width: 100%;
+}
+
+.bechtix-field {
+  padding: 1em;
+  border: 1px solid #ccc;
+  border-bottom: none;
+}
+
+.bechtix-field:last-child {
+  border-bottom: 1px solid #ccc;
+}
+
+.bechtix-field label {
+  display: block;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.bechtix-field input {
+  margin: 0;
+}
+
+.bechtix-button-upload img {
+  max-width: 100%;
+}
