@@ -22,6 +22,10 @@ class BechTix
     register_activation_hook(__FILE__, array($this, 'activation'));
     add_action('add_meta_boxes', array($this, 'add_ticket_metaboxes'));
     add_action('save_post', array($this, 'save_post_meta'));
+    add_action('save_post_events', array($this, 'set_event_terms_to_related_tickets'));
+    add_action('save_post_events', array($this, 'set_event_festival_to_related_tickets'));
+    add_action('save_post_tickets', array($this, 'add_event_terms_to_ticket'));
+    add_action('wp_after_insert_post', array($this, 'add_event_festival_to_ticket'));
     add_action('rest_api_init', array($this, 'register_rest_route_for_parse_data'));
   }
 
@@ -145,6 +149,89 @@ class BechTix
     add_submenu_page('edit.php?post_type=events', null, 'Genres', 'edit_posts', '/edit-tags.php?taxonomy=genres&post_type=events', null);
     add_submenu_page('edit.php?post_type=events', null, 'Instruments', 'edit_posts', '/edit-tags.php?taxonomy=instruments&post_type=events', null);
     add_submenu_page('edit.php?post_type=events', null, 'Festivals', 'edit_posts', '/edit.php?post_type=festivals', null);
+  }
+
+  public function set_event_terms_to_related_tickets($event_id) {
+    $related_ticket_ids = get_posts(array(
+      'post_type' => 'tickets',
+      'numberposts' => -1,
+      'meta_key' => '_bechtix_event_relation',
+      'meta_value' => $event_id,
+      'fields' => 'ids'
+    ));
+
+    if (empty($related_ticket_ids)) {
+      return;
+    }
+    
+    $taxonomies = get_post_taxonomies($event_id);
+    $terms = wp_get_object_terms($event_id, $taxonomies);
+
+    foreach ($related_ticket_ids as $ticket_id) {
+      foreach ($terms as $term) {
+        wp_add_object_terms($ticket_id, $term->term_id, $term->taxonomy);
+      }
+    }
+  }
+
+  public function add_event_terms_to_ticket($post_id)
+  { 
+    $event_id = get_post_meta($post_id, '_bechtix_event_relation', true);
+
+    if (empty($event_id)) {
+      return;
+    }
+
+    $taxonomies = get_post_taxonomies($event_id);
+    $terms = wp_get_post_terms($event_id, $taxonomies);
+
+    foreach ($terms as $term) {
+      wp_add_object_terms($post_id, $term->term_id, $term->taxonomy);
+    }
+  }
+
+  public function set_event_festival_to_related_tickets($event_id) {
+    $related_ticket_ids = get_posts(array(
+      'post_type' => 'tickets',
+      'numberposts' => -1,
+      'meta_key' => '_bechtix_event_relation',
+      'meta_value' => $event_id,
+      'fields' => 'ids'
+    ));
+
+    if (empty($related_ticket_ids)) {
+      return;
+    }
+
+    $festival_id = get_post_meta($event_id, '_bechtix_festival_relation', true);
+
+    if (empty($festival_id)) {
+      return;
+    }
+
+    foreach ($related_ticket_ids as $ticket_id) {
+      update_post_meta($ticket_id, '_bechtix_festival_relation', $festival_id);
+    }
+  }
+
+  public function add_event_festival_to_ticket($post_id) {
+    if ('tickets' !== get_post_type($post_id)) {
+      return;
+    }
+
+    $event_id = get_post_meta($post_id, '_bechtix_event_relation', true);
+
+    if (empty($event_id)) {
+      return;
+    }
+
+    $festival_id = get_post_meta($event_id, '_bechtix_festival_relation', true);
+
+    if (empty($festival_id)) {
+      return;
+    }
+
+    update_post_meta($post_id, '_bechtix_festival_relation', $festival_id);
   }
 
   public function register_rest_route_for_parse_data()
@@ -1020,3 +1107,4 @@ class BechTix
 }
 
 new BechTix();
+
