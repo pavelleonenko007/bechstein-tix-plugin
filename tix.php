@@ -342,7 +342,7 @@ class BechTix
           update_post_meta($ticket_id, '_bechtix_ticket_id', $ticket['EventId']);
         }
 
-        if (!empty($ticket['Duration'])) {
+        if (isset($ticket['Duration'])) {
           update_post_meta($ticket_id, '_bechtix_duration', $ticket['Duration']);
         }
 
@@ -378,8 +378,8 @@ class BechTix
           update_post_meta($ticket_id, '_bechtix_ticket_online_sale_end', gmdate('Y-m-d H:i:s', $ticket['OnlineSaleEndUTCUnix']));
         }
 
-        if (!empty($ticket['SaleStatus'])) {
-          update_post_meta($ticket_id, '_bechtix_sale_status', $ticket['SaleStatus']);
+        if (isset($ticket['SaleStatus'])) {
+          update_post_meta($ticket_id, '_bechtix_sale_status', (string) $ticket['SaleStatus']);
         }
 
         if (!empty($ticket['MinPrice'])) {
@@ -398,6 +398,10 @@ class BechTix
           $formatted_array = $this->format_purchase_urls_data($ticket['PurchaseUrls']);
           update_post_meta($ticket_id, '_bechtix_purchase_urls', wp_json_encode($formatted_array));
         }
+
+				if (isset($ticket['WaitingList'])) {
+					update_post_meta($ticket_id, '_bechtix_in_waiting_list', (int) $ticket['WaitingList']);
+				}
       }
     }
 
@@ -627,6 +631,13 @@ class BechTix
       'tickets'
     );
 
+		add_meta_box(
+      'bechtix_waiting_list',
+      'Waiting List',
+      array($this, 'add_bechtix_waiting_list_checkbox'),
+      'tickets'
+    );
+
     add_meta_box(
       'bechtix_festival_dates',
       'Festival Dates',
@@ -657,7 +668,14 @@ class BechTix
   public function get_input_field($field_id, $type = 'text', $value = '')
   {
     $id = mb_substr($field_id, 1);
-    return '<input type="' . $type . '" class="bechtix-text-field" name="' . $id . '" id="' . $id . '" value="' . $value . '" />';
+
+		switch ($type) {
+			case 'checkbox':
+				$checked = !empty($value) ? 'checked' : '';
+				return "<input type=\"$type\" style=\"margin-top: 0;\" class=\"bechtix-checkbox\" name=\"$id\" id=\"$id\" $checked />";
+			default:
+				return '<input type="' . $type . '" class="bechtix-text-field" name="' . $id . '" id="' . $id . '" value="' . $value . '" />';
+		}
   }
 
   public function add_event_relation_select($post)
@@ -934,6 +952,15 @@ class BechTix
     echo $this->get_input_field('_bechtix_festival_note', 'text', $festival_note);
   }
 
+	public function add_bechtix_waiting_list_checkbox($post)
+  {
+    $is_in_waiting_list = (bool) get_post_meta($post->ID, '_bechtix_in_waiting_list', true);
+		echo "<label style=\"display: flex; align-items: center; gap: 10px\">
+			<span style=\"font-weight: 500;\">In Waiting List</span>";
+    echo $this->get_input_field('_bechtix_in_waiting_list', 'checkbox', $is_in_waiting_list);
+		echo "</label>";
+  }
+
   public function save_post_meta($post_id)
   {
     if (array_key_exists('bechtix_event_group_id', $_POST)) {
@@ -1087,6 +1114,12 @@ class BechTix
         $_POST['bechtix_ticket_benefits']
       );
     }
+
+		update_post_meta(
+			$post_id,
+			'_bechtix_in_waiting_list',
+			(int) isset($_POST['bechtix_in_waiting_list'])
+		);
 
     if (array_key_exists('bechtix_festival_dates', $_POST)) {
       update_post_meta(
